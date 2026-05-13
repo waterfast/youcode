@@ -168,7 +168,7 @@ export default function ApiProviderSection() {
     return <p className="text-[11px] text-fg-muted py-1">Loading API settings…</p>;
   }
 
-  const hasConfig = cfg.anthropicBaseUrl && (cfg.anthropicApiKey || cfg.anthropicAuthToken);
+  const hasConfig = !!(cfg.anthropicBaseUrl && (cfg.anthropicApiKey || cfg.anthropicAuthToken));
 
   return (
     <section className="border-t border-edge-dim pt-4 mt-1">
