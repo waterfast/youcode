@@ -116,17 +116,42 @@ class PtyBridge(
         eventBridge = bridge
     }
 
-    /** ~/.claude-mobile/api-provider.json — optional ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL for third-party gateways. */
+    /** ~/.claude-mobile/api-provider.json — env vars for third-party API providers.
+     *
+     *  Supported fields:
+     *    anthropicApiKey        → ANTHROPIC_API_KEY (also aliased ANTHROPIC_AUTH_TOKEN for gateways)
+     *    anthropicAuthToken     → ANTHROPIC_AUTH_TOKEN (some gateways use this field)
+     *    anthropicBaseUrl       → ANTHROPIC_BASE_URL
+     *    anthropicModel         → ANTHROPIC_MODEL
+     *    anthropicHaikuModel    → ANTHROPIC_DEFAULT_HAIKU_MODEL
+     *    anthropicSonnetModel   → ANTHROPIC_DEFAULT_SONNET_MODEL
+     *    anthropicOpusModel     → ANTHROPIC_DEFAULT_OPUS_MODEL
+     */
     private fun mergeApiProviderFileEnv(target: MutableMap<String, String>, home: File) {
         val f = File(home, ".claude-mobile/api-provider.json")
         if (!f.isFile) return
         try {
             val j = JSONObject(f.readText())
-            val k = j.optString("anthropicApiKey", "").trim()
-            var u = j.optString("anthropicBaseUrl", "").trim()
-            if (u.endsWith("/")) u = u.dropLast(1)
-            if (k.isNotEmpty()) target["ANTHROPIC_API_KEY"] = k
-            if (u.isNotEmpty()) target["ANTHROPIC_BASE_URL"] = u
+            val apiKey = j.optString("anthropicApiKey", "").trim()
+            val authToken = j.optString("anthropicAuthToken", "").trim()
+            var baseUrl = j.optString("anthropicBaseUrl", "").trim()
+            if (baseUrl.endsWith("/")) baseUrl = baseUrl.dropLast(1)
+            val modelName = j.optString("anthropicModel", "").trim()
+            val haikuModel = j.optString("anthropicHaikuModel", "").trim()
+            val sonnetModel = j.optString("anthropicSonnetModel", "").trim()
+            val opusModel = j.optString("anthropicOpusModel", "").trim()
+
+            if (apiKey.isNotEmpty()) {
+                target["ANTHROPIC_API_KEY"] = apiKey
+                // Also set AUTH_TOKEN for gateways that expect it
+                if (authToken.isEmpty()) target["ANTHROPIC_AUTH_TOKEN"] = apiKey
+            }
+            if (authToken.isNotEmpty()) target["ANTHROPIC_AUTH_TOKEN"] = authToken
+            if (baseUrl.isNotEmpty()) target["ANTHROPIC_BASE_URL"] = baseUrl
+            if (modelName.isNotEmpty()) target["ANTHROPIC_MODEL"] = modelName
+            if (haikuModel.isNotEmpty()) target["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = haikuModel
+            if (sonnetModel.isNotEmpty()) target["ANTHROPIC_DEFAULT_SONNET_MODEL"] = sonnetModel
+            if (opusModel.isNotEmpty()) target["ANTHROPIC_DEFAULT_OPUS_MODEL"] = opusModel
         } catch (_: Exception) {
         }
     }

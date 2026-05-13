@@ -62,19 +62,35 @@ function resolveCommand(cmd) {
   return cmd; // fallback to bare name (works on macOS/Linux via execvp)
 }
 
-/** Optional ~/.claude-mobile/api-provider.json — ANTHROPIC_* for LiteLLM / OpenRouter-style gateways. */
+/** Optional ~/.claude-mobile/api-provider.json — ANTHROPIC_* env vars for third-party API providers. */
 function readApiProviderEnv() {
   const p = path.join(os.homedir(), '.claude-mobile', 'api-provider.json');
   const out = {};
   try {
     const j = JSON.parse(fs.readFileSync(p, 'utf-8'));
-    if (typeof j.anthropicApiKey === 'string' && j.anthropicApiKey.trim()) {
-      out.ANTHROPIC_API_KEY = j.anthropicApiKey.trim();
+    const apiKey = typeof j.anthropicApiKey === 'string' ? j.anthropicApiKey.trim() : '';
+    const authToken = typeof j.anthropicAuthToken === 'string' ? j.anthropicAuthToken.trim() : '';
+    if (apiKey) {
+      out.ANTHROPIC_API_KEY = apiKey;
+      if (!authToken) out.ANTHROPIC_AUTH_TOKEN = apiKey;
     }
+    if (authToken) out.ANTHROPIC_AUTH_TOKEN = authToken;
     if (typeof j.anthropicBaseUrl === 'string' && j.anthropicBaseUrl.trim()) {
       let u = j.anthropicBaseUrl.trim();
       if (u.endsWith('/')) u = u.slice(0, -1);
       out.ANTHROPIC_BASE_URL = u;
+    }
+    if (typeof j.anthropicModel === 'string' && j.anthropicModel.trim()) {
+      out.ANTHROPIC_MODEL = j.anthropicModel.trim();
+    }
+    if (typeof j.anthropicHaikuModel === 'string' && j.anthropicHaikuModel.trim()) {
+      out.ANTHROPIC_DEFAULT_HAIKU_MODEL = j.anthropicHaikuModel.trim();
+    }
+    if (typeof j.anthropicSonnetModel === 'string' && j.anthropicSonnetModel.trim()) {
+      out.ANTHROPIC_DEFAULT_SONNET_MODEL = j.anthropicSonnetModel.trim();
+    }
+    if (typeof j.anthropicOpusModel === 'string' && j.anthropicOpusModel.trim()) {
+      out.ANTHROPIC_DEFAULT_OPUS_MODEL = j.anthropicOpusModel.trim();
     }
   } catch (_) {
     /* missing or invalid */

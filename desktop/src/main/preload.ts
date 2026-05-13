@@ -532,10 +532,24 @@ contextBridge.exposeInMainWorld('claude', {
       ipcRenderer.invoke(IPC.DEFAULTS_SET, updates),
   },
   provider: {
-    get: (): Promise<{ anthropicApiKey: string; anthropicBaseUrl: string }> =>
-      ipcRenderer.invoke(IPC.PROVIDER_GET),
-    set: (updates: Partial<{ anthropicApiKey: string; anthropicBaseUrl: string }>): Promise<boolean> =>
-      ipcRenderer.invoke(IPC.PROVIDER_SET, updates),
+    get: (): Promise<{
+      anthropicApiKey: string;
+      anthropicAuthToken: string;
+      anthropicBaseUrl: string;
+      anthropicModel: string;
+      anthropicHaikuModel: string;
+      anthropicSonnetModel: string;
+      anthropicOpusModel: string;
+    }> => ipcRenderer.invoke(IPC.PROVIDER_GET),
+    set: (updates: Partial<{
+      anthropicApiKey: string;
+      anthropicAuthToken: string;
+      anthropicBaseUrl: string;
+      anthropicModel: string;
+      anthropicHaikuModel: string;
+      anthropicSonnetModel: string;
+      anthropicOpusModel: string;
+    }>): Promise<boolean> => ipcRenderer.invoke(IPC.PROVIDER_SET, updates),
   },
   // Anonymous analytics opt-out — read/write the gate that analytics-service
   // checks on launch. Default state is ON; users flip from About → Privacy.

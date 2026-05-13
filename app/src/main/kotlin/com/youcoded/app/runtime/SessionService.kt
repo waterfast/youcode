@@ -736,11 +736,24 @@ class SessionService : Service() {
                 val dangerous = msg.payload.optBoolean("skipPermissions", false)
                 val payloadModel = msg.payload.optString("model", "")
                 val model = if (payloadModel.isNotEmpty()) payloadModel else {
-                    val prefFile = File(bootstrap!!.homeDir, ".claude-mobile/model-preference.json")
-                    try {
-                        val json = org.json.JSONObject(prefFile.readText())
-                        json.optString("model", "sonnet")
-                    } catch (_: Exception) { "sonnet" }
+                    // Prefer provider model from api-provider.json, then model-preference.json
+                    var resolved = "sonnet"
+                    val apiProviderFile = File(bootstrap!!.homeDir, ".claude-mobile/api-provider.json")
+                    if (apiProviderFile.isFile) {
+                        try {
+                            val providerJson = org.json.JSONObject(apiProviderFile.readText())
+                            val providerModel = providerJson.optString("anthropicModel", "").trim()
+                            if (providerModel.isNotEmpty()) resolved = providerModel
+                        } catch (_: Exception) {}
+                    }
+                    if (resolved == "sonnet") {
+                        val prefFile = File(bootstrap!!.homeDir, ".claude-mobile/model-preference.json")
+                        try {
+                            val json = org.json.JSONObject(prefFile.readText())
+                            resolved = json.optString("model", "sonnet")
+                        } catch (_: Exception) {}
+                    }
+                    resolved
                 }
                 android.util.Log.i("SessionService", "Bridge session:create cwd=$cwd dangerous=$dangerous")
                 // TerminalSession requires the main thread (Looper)
@@ -1584,11 +1597,23 @@ class SessionService : Service() {
             }
 
             "model:get-preference" -> {
-                val prefFile = File(bootstrap!!.homeDir, ".claude-mobile/model-preference.json")
-                val model = try {
-                    val json = org.json.JSONObject(prefFile.readText())
-                    json.optString("model", "sonnet")
-                } catch (_: Exception) { "sonnet" }
+                var model = "sonnet"
+                // Prefer provider model from api-provider.json
+                val apiFile = File(bootstrap!!.homeDir, ".claude-mobile/api-provider.json")
+                if (apiFile.isFile) {
+                    try {
+                        val providerJson = org.json.JSONObject(apiFile.readText())
+                        val providerModel = providerJson.optString("anthropicModel", "").trim()
+                        if (providerModel.isNotEmpty()) model = providerModel
+                    } catch (_: Exception) {}
+                }
+                if (model == "sonnet") {
+                    val prefFile = File(bootstrap!!.homeDir, ".claude-mobile/model-preference.json")
+                    try {
+                        val json = org.json.JSONObject(prefFile.readText())
+                        model = json.optString("model", "sonnet")
+                    } catch (_: Exception) {}
+                }
                 msg.id?.let { bridgeServer.respond(ws, msg.type, it, model) }
             }
             "model:set-preference" -> {
@@ -1602,26 +1627,46 @@ class SessionService : Service() {
                 val f = File(bootstrap!!.homeDir, ".claude-mobile/api-provider.json")
                 val out = JSONObject().apply {
                     put("anthropicApiKey", "")
+                    put("anthropicAuthToken", "")
                     put("anthropicBaseUrl", "")
+                    put("anthropicModel", "")
+                    put("anthropicHaikuModel", "")
+                    put("anthropicSonnetModel", "")
+                    put("anthropicOpusModel", "")
                 }
                 try {
                     val j = JSONObject(f.readText())
                     out.put("anthropicApiKey", j.optString("anthropicApiKey", ""))
+                    out.put("anthropicAuthToken", j.optString("anthropicAuthToken", ""))
                     out.put("anthropicBaseUrl", j.optString("anthropicBaseUrl", ""))
+                    out.put("anthropicModel", j.optString("anthropicModel", ""))
+                    out.put("anthropicHaikuModel", j.optString("anthropicHaikuModel", ""))
+                    out.put("anthropicSonnetModel", j.optString("anthropicSonnetModel", ""))
+                    out.put("anthropicOpusModel", j.optString("anthropicOpusModel", ""))
                 } catch (_: Exception) {
                 }
                 msg.id?.let { bridgeServer.respond(ws, msg.type, it, out) }
             }
             "provider:set-config" -> {
-                val key = msg.payload.optString("anthropicApiKey", "")
-                var base = msg.payload.optString("anthropicBaseUrl", "").trim()
-                if (base.endsWith("/")) base = base.dropLast(1)
+                val apiKey = msg.payload.optString("anthropicApiKey", "").trim()
+                val authToken = msg.payload.optString("anthropicAuthToken", "").trim()
+                var baseUrl = msg.payload.optString("anthropicBaseUrl", "").trim()
+                if (baseUrl.endsWith("/")) baseUrl = baseUrl.dropLast(1)
+                val model = msg.payload.optString("anthropicModel", "").trim()
+                val haikuModel = msg.payload.optString("anthropicHaikuModel", "").trim()
+                val sonnetModel = msg.payload.optString("anthropicSonnetModel", "").trim()
+                val opusModel = msg.payload.optString("anthropicOpusModel", "").trim()
                 val f = File(bootstrap!!.homeDir, ".claude-mobile/api-provider.json")
                 f.parentFile?.mkdirs()
                 f.writeText(
                     JSONObject().apply {
-                        put("anthropicApiKey", key)
-                        put("anthropicBaseUrl", base)
+                        put("anthropicApiKey", apiKey)
+                        put("anthropicAuthToken", authToken)
+                        put("anthropicBaseUrl", baseUrl)
+                        put("anthropicModel", model)
+                        put("anthropicHaikuModel", haikuModel)
+                        put("anthropicSonnetModel", sonnetModel)
+                        put("anthropicOpusModel", opusModel)
                     }.toString(2),
                 )
                 msg.id?.let { bridgeServer.respond(ws, msg.type, it, true) }

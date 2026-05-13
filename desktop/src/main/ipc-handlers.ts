@@ -534,7 +534,19 @@ export function registerIpcHandlers(
   });
 
   // --- Model preference persistence ---
+  const apiProviderPath = path.join(os.homedir(), '.claude-mobile', 'api-provider.json');
+
   ipcMain.handle('model:get-preference', async () => {
+    try {
+      // Prefer provider model from api-provider.json
+      const apiProviderRaw = fs.readFileSync(apiProviderPath, 'utf-8');
+      const apiProvider = JSON.parse(apiProviderRaw);
+      if (typeof apiProvider.anthropicModel === 'string' && apiProvider.anthropicModel.trim()) {
+        return apiProvider.anthropicModel.trim();
+      }
+    } catch {
+      /* no provider config or no model set */
+    }
     try {
       const raw = fs.readFileSync(modelPrefPath, 'utf-8');
       const parsed = JSON.parse(raw);
@@ -554,18 +566,31 @@ export function registerIpcHandlers(
     }
   });
 
-  const apiProviderPath = path.join(os.homedir(), '.claude-mobile', 'api-provider.json');
+  interface ApiProviderConfig {
+    anthropicApiKey: string;
+    anthropicAuthToken: string;
+    anthropicBaseUrl: string;
+    anthropicModel: string;
+    anthropicHaikuModel: string;
+    anthropicSonnetModel: string;
+    anthropicOpusModel: string;
+  }
 
-  function readApiProviderConfig(): { anthropicApiKey: string; anthropicBaseUrl: string } {
+  function readApiProviderConfig(): ApiProviderConfig {
     try {
       const raw = fs.readFileSync(apiProviderPath, 'utf-8');
       const j = JSON.parse(raw);
       return {
         anthropicApiKey: typeof j.anthropicApiKey === 'string' ? j.anthropicApiKey : '',
+        anthropicAuthToken: typeof j.anthropicAuthToken === 'string' ? j.anthropicAuthToken : '',
         anthropicBaseUrl: typeof j.anthropicBaseUrl === 'string' ? j.anthropicBaseUrl : '',
+        anthropicModel: typeof j.anthropicModel === 'string' ? j.anthropicModel : '',
+        anthropicHaikuModel: typeof j.anthropicHaikuModel === 'string' ? j.anthropicHaikuModel : '',
+        anthropicSonnetModel: typeof j.anthropicSonnetModel === 'string' ? j.anthropicSonnetModel : '',
+        anthropicOpusModel: typeof j.anthropicOpusModel === 'string' ? j.anthropicOpusModel : '',
       };
     } catch {
-      return { anthropicApiKey: '', anthropicBaseUrl: '' };
+      return { anthropicApiKey: '', anthropicAuthToken: '', anthropicBaseUrl: '', anthropicModel: '', anthropicHaikuModel: '', anthropicSonnetModel: '', anthropicOpusModel: '' };
     }
   }
 
@@ -573,7 +598,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle(
     'provider:set-config',
-    async (_event, updates: { anthropicApiKey?: string; anthropicBaseUrl?: string }) => {
+    async (_event, updates: Partial<ApiProviderConfig>) => {
       try {
         const cur = readApiProviderConfig();
         const merged = { ...cur, ...updates };
@@ -582,7 +607,19 @@ export function registerIpcHandlers(
         fs.mkdirSync(path.dirname(apiProviderPath), { recursive: true });
         fs.writeFileSync(
           apiProviderPath,
-          JSON.stringify({ anthropicApiKey: merged.anthropicApiKey || '', anthropicBaseUrl: u }, null, 2),
+          JSON.stringify(
+            {
+              anthropicApiKey: merged.anthropicApiKey || '',
+              anthropicAuthToken: merged.anthropicAuthToken || '',
+              anthropicBaseUrl: u,
+              anthropicModel: merged.anthropicModel || '',
+              anthropicHaikuModel: merged.anthropicHaikuModel || '',
+              anthropicSonnetModel: merged.anthropicSonnetModel || '',
+              anthropicOpusModel: merged.anthropicOpusModel || '',
+            },
+            null,
+            2,
+          ),
         );
         return true;
       } catch {
