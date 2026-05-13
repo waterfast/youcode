@@ -554,6 +554,43 @@ export function registerIpcHandlers(
     }
   });
 
+  const apiProviderPath = path.join(os.homedir(), '.claude-mobile', 'api-provider.json');
+
+  function readApiProviderConfig(): { anthropicApiKey: string; anthropicBaseUrl: string } {
+    try {
+      const raw = fs.readFileSync(apiProviderPath, 'utf-8');
+      const j = JSON.parse(raw);
+      return {
+        anthropicApiKey: typeof j.anthropicApiKey === 'string' ? j.anthropicApiKey : '',
+        anthropicBaseUrl: typeof j.anthropicBaseUrl === 'string' ? j.anthropicBaseUrl : '',
+      };
+    } catch {
+      return { anthropicApiKey: '', anthropicBaseUrl: '' };
+    }
+  }
+
+  ipcMain.handle('provider:get-config', async () => readApiProviderConfig());
+
+  ipcMain.handle(
+    'provider:set-config',
+    async (_event, updates: { anthropicApiKey?: string; anthropicBaseUrl?: string }) => {
+      try {
+        const cur = readApiProviderConfig();
+        const merged = { ...cur, ...updates };
+        let u = (merged.anthropicBaseUrl || '').trim();
+        if (u.endsWith('/')) u = u.slice(0, -1);
+        fs.mkdirSync(path.dirname(apiProviderPath), { recursive: true });
+        fs.writeFileSync(
+          apiProviderPath,
+          JSON.stringify({ anthropicApiKey: merged.anthropicApiKey || '', anthropicBaseUrl: u }, null, 2),
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  );
+
   // --- Model modes (fast + effort) persistence ---
   // ~/.claude/youcoded-model-modes.json holds `{ fast, effort }`. These aren't
   // verified from transcripts (Claude Code doesn't include them there) — we

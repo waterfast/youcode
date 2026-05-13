@@ -148,6 +148,8 @@ const IPC = {
   MODEL_READ_LAST: 'model:read-last',
   DEFAULTS_GET: 'defaults:get',
   DEFAULTS_SET: 'defaults:set',
+  PROVIDER_GET: 'provider:get-config',
+  PROVIDER_SET: 'provider:set-config',
   // Claude Code settings.json bridge — used by Preferences panel (/config intercept)
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
@@ -528,6 +530,12 @@ contextBridge.exposeInMainWorld('claude', {
       ipcRenderer.invoke(IPC.DEFAULTS_GET),
     set: (updates: Partial<{ skipPermissions: boolean; model: string; projectFolder: string }>): Promise<any> =>
       ipcRenderer.invoke(IPC.DEFAULTS_SET, updates),
+  },
+  provider: {
+    get: (): Promise<{ anthropicApiKey: string; anthropicBaseUrl: string }> =>
+      ipcRenderer.invoke(IPC.PROVIDER_GET),
+    set: (updates: Partial<{ anthropicApiKey: string; anthropicBaseUrl: string }>): Promise<boolean> =>
+      ipcRenderer.invoke(IPC.PROVIDER_SET, updates),
   },
   // Anonymous analytics opt-out — read/write the gate that analytics-service
   // checks on launch. Default state is ON; users flip from About → Privacy.

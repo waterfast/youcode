@@ -18,6 +18,7 @@ import { DevelopmentPopup } from './development/DevelopmentPopup';
 import { BugReportPopup } from './development/BugReportPopup';
 import { ContributePopup } from './development/ContributePopup';
 import PerformanceButton from './PerformanceButton';
+import ApiProviderSection from './ApiProviderSection';
 
 // Plain-language explainer for the Remote Access popup. Shown when the user
 // taps the (i) icon in the popup header — see RemoteButton's `showInfo` state.
@@ -1382,6 +1383,8 @@ function DefaultsButton({ defaults, onDefaultsChange }: DefaultsButtonProps) {
                     ))}
                   </div>
                 </section>
+
+                <ApiProviderSection />
 
                 {/* Skip Permissions */}
                 <SkipPermissionsSection defaults={defaults} onDefaultsChange={onDefaultsChange} />

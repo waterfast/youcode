@@ -62,6 +62,26 @@ function resolveCommand(cmd) {
   return cmd; // fallback to bare name (works on macOS/Linux via execvp)
 }
 
+/** Optional ~/.claude-mobile/api-provider.json — ANTHROPIC_* for LiteLLM / OpenRouter-style gateways. */
+function readApiProviderEnv() {
+  const p = path.join(os.homedir(), '.claude-mobile', 'api-provider.json');
+  const out = {};
+  try {
+    const j = JSON.parse(fs.readFileSync(p, 'utf-8'));
+    if (typeof j.anthropicApiKey === 'string' && j.anthropicApiKey.trim()) {
+      out.ANTHROPIC_API_KEY = j.anthropicApiKey.trim();
+    }
+    if (typeof j.anthropicBaseUrl === 'string' && j.anthropicBaseUrl.trim()) {
+      let u = j.anthropicBaseUrl.trim();
+      if (u.endsWith('/')) u = u.slice(0, -1);
+      out.ANTHROPIC_BASE_URL = u;
+    }
+  } catch (_) {
+    /* missing or invalid */
+  }
+  return out;
+}
+
 let ptyProcess = null;
 
 // Strip ANSI control sequences for substring-matching against PTY output.
@@ -222,6 +242,7 @@ process.on('message', (msg) => {
         cwd: msg.cwd || require('os').homedir(),
         env: {
           ...process.env,
+          ...readApiProviderEnv(),
           // Pass our session ID so hook scripts can include it in payloads
           CLAUDE_DESKTOP_SESSION_ID: msg.sessionId || '',
           // Pass the unique pipe name so relay.js connects to the right instance

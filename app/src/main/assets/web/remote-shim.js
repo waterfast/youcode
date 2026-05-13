@@ -910,6 +910,10 @@ function installShim() {
             get: () => invoke('defaults:get'),
             set: (updates) => invoke('defaults:set', updates),
         },
+        provider: {
+            get: () => invoke('provider:get-config'),
+            set: (updates) => invoke('provider:set-config', updates),
+        },
         // Anonymous analytics opt-out — mirror of preload.ts. Android handlers
         // land in Phase 7; until then the remote-shim path resolves via the
         // WebSocket once the Kotlin side dispatches these types.

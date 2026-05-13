@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.json.JSONObject
 import java.io.File
 
 class PtyBridge(
@@ -115,8 +116,24 @@ class PtyBridge(
         eventBridge = bridge
     }
 
+    /** ~/.claude-mobile/api-provider.json — optional ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL for third-party gateways. */
+    private fun mergeApiProviderFileEnv(target: MutableMap<String, String>, home: File) {
+        val f = File(home, ".claude-mobile/api-provider.json")
+        if (!f.isFile) return
+        try {
+            val j = JSONObject(f.readText())
+            val k = j.optString("anthropicApiKey", "").trim()
+            var u = j.optString("anthropicBaseUrl", "").trim()
+            if (u.endsWith("/")) u = u.dropLast(1)
+            if (k.isNotEmpty()) target["ANTHROPIC_API_KEY"] = k
+            if (u.isNotEmpty()) target["ANTHROPIC_BASE_URL"] = u
+        } catch (_: Exception) {
+        }
+    }
+
     fun start() {
         val env = bootstrap.buildRuntimeEnv().toMutableMap()
+        mergeApiProviderFileEnv(env, bootstrap.homeDir)
         apiKey?.let { env["ANTHROPIC_API_KEY"] = it }
 
         // Set socket path for hook-relay.js

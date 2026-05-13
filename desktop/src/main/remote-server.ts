@@ -788,6 +788,45 @@ export class RemoteServer {
         }
         break;
       }
+      case 'provider:get-config': {
+        const apiProviderPath = path.join(os.homedir(), '.claude-mobile', 'api-provider.json');
+        const empty = { anthropicApiKey: '', anthropicBaseUrl: '' };
+        try {
+          const raw = await fs.promises.readFile(apiProviderPath, 'utf8');
+          const j = JSON.parse(raw);
+          this.respond(client.ws, type, id, {
+            anthropicApiKey: typeof j.anthropicApiKey === 'string' ? j.anthropicApiKey : '',
+            anthropicBaseUrl: typeof j.anthropicBaseUrl === 'string' ? j.anthropicBaseUrl : '',
+          });
+        } catch {
+          this.respond(client.ws, type, id, empty);
+        }
+        break;
+      }
+      case 'provider:set-config': {
+        const apiProviderPath = path.join(os.homedir(), '.claude-mobile', 'api-provider.json');
+        try {
+          const cur = { anthropicApiKey: '', anthropicBaseUrl: '' };
+          try {
+            const raw = await fs.promises.readFile(apiProviderPath, 'utf8');
+            const j = JSON.parse(raw);
+            cur.anthropicApiKey = typeof j.anthropicApiKey === 'string' ? j.anthropicApiKey : '';
+            cur.anthropicBaseUrl = typeof j.anthropicBaseUrl === 'string' ? j.anthropicBaseUrl : '';
+          } catch {}
+          const merged = { ...cur, ...payload };
+          let u = (merged.anthropicBaseUrl || '').trim();
+          if (u.endsWith('/')) u = u.slice(0, -1);
+          await fs.promises.mkdir(path.dirname(apiProviderPath), { recursive: true });
+          await fs.promises.writeFile(
+            apiProviderPath,
+            JSON.stringify({ anthropicApiKey: merged.anthropicApiKey || '', anthropicBaseUrl: u }, null, 2),
+          );
+          this.respond(client.ws, type, id, true);
+        } catch {
+          this.respond(client.ws, type, id, false);
+        }
+        break;
+      }
       case 'get-home-path': {
         this.respond(client.ws, type, id, os.homedir());
         break;

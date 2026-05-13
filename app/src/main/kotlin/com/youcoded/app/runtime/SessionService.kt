@@ -1598,6 +1598,34 @@ class SessionService : Service() {
                 prefFile.writeText(org.json.JSONObject().put("model", model).toString())
                 msg.id?.let { bridgeServer.respond(ws, msg.type, it, true) }
             }
+            "provider:get-config" -> {
+                val f = File(bootstrap!!.homeDir, ".claude-mobile/api-provider.json")
+                val out = JSONObject().apply {
+                    put("anthropicApiKey", "")
+                    put("anthropicBaseUrl", "")
+                }
+                try {
+                    val j = JSONObject(f.readText())
+                    out.put("anthropicApiKey", j.optString("anthropicApiKey", ""))
+                    out.put("anthropicBaseUrl", j.optString("anthropicBaseUrl", ""))
+                } catch (_: Exception) {
+                }
+                msg.id?.let { bridgeServer.respond(ws, msg.type, it, out) }
+            }
+            "provider:set-config" -> {
+                val key = msg.payload.optString("anthropicApiKey", "")
+                var base = msg.payload.optString("anthropicBaseUrl", "").trim()
+                if (base.endsWith("/")) base = base.dropLast(1)
+                val f = File(bootstrap!!.homeDir, ".claude-mobile/api-provider.json")
+                f.parentFile?.mkdirs()
+                f.writeText(
+                    JSONObject().apply {
+                        put("anthropicApiKey", key)
+                        put("anthropicBaseUrl", base)
+                    }.toString(2),
+                )
+                msg.id?.let { bridgeServer.respond(ws, msg.type, it, true) }
+            }
 
             "appearance:get" -> {
                 val prefFile = File(bootstrap!!.homeDir, ".claude-mobile/youcoded-appearance.json")
